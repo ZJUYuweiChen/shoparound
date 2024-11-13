@@ -16,6 +16,7 @@ else
     echo "初始化密码创建成功"
 fi
 
+rm -rf ./logs/log/*
 docker-compose down
 docker-compose --profile development up
 echo "欢迎使用 ShopAround (Developer's Mode)"

@@ -10,6 +10,7 @@ services:
     working_dir: /web
     volumes:
       - ./web:/web
+    command: ['yarn', 'dev']
     environment:
       TZ: Asia/Shanghai
     restart: always
@@ -52,6 +53,7 @@ services:
     volumes:
       - ./backend:/backend
       - ./logs/log:/var/log
+    command: ['sh', 'develop.sh']
     environment:
       DEBUG: true
       PYTHONUNBUFFERED: 1
@@ -78,10 +80,6 @@ services:
     depends_on:
       - shoparound-mysql
     container_name: shoparound-django-production
-    working_dir: /backend
-    volumes:
-      - ./backend:/backend
-      - ./logs/log:/var/log
     build:
       context: .
       dockerfile: ./docker_env/django/Dockerfile.production
