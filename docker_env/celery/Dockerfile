@@ -1,0 +1,6 @@
+FROM python:3.10-alpine
+RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
+RUN apk update && apk add bash bash-doc bash-completion git freetds-dev jpeg-dev linux-headers mysql-client mariadb-dev build-base libffi-dev openssl-dev zlib-dev bzip2-dev pcre-dev ncurses-dev readline-dev tk-dev postgresql-dev
+WORKDIR /backend
+RUN python3 -m pip install -i https://pypi.tuna.tsinghua.edu.cn/simple/ -r requirements.txt
+CMD ["celery", "-A", "application", "worker", "-B", "--loglevel=info"]

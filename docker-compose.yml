@@ -1,0 +1,185 @@
+version: "3.9"
+services:
+  shoparound-web-development:
+    profiles:
+      - development
+    container_name: shoparound-web-development
+    build:
+      context: ./
+      dockerfile: ./docker_env/web/Dockerfile.development
+    working_dir: /web
+    volumes:
+      - ./web:/web
+    environment:
+      TZ: Asia/Shanghai
+    restart: always
+    ports:
+      - "8080:8080"
+    expose:
+      - "8080"
+    networks:
+      network:
+        ipv4_address: 177.10.0.11
+
+  shoparound-web-production:
+    profiles:
+      - production
+    container_name: shoparound-web-production
+    build:
+      context: ./
+      dockerfile: ./docker_env/web/Dockerfile.production
+    environment:
+      TZ: Asia/Shanghai
+    restart: always
+    ports:
+      - "8080:8080"
+    expose:
+      - "8080"
+    networks:
+      network:
+        ipv4_address: 177.10.0.11
+
+  shoparound-django-development:
+    profiles:
+      - development
+    depends_on:
+      - shoparound-mysql
+    container_name: shoparound-django-development
+    build:
+      context: .
+      dockerfile: ./docker_env/django/Dockerfile.development
+    working_dir: /backend
+    volumes:
+      - ./backend:/backend
+      - ./logs/log:/var/log
+    environment:
+      DEBUG: true
+      PYTHONUNBUFFERED: 1
+      DATABASE_ENGINE: django.db.backends.mysql
+      DATABASE_NAME: shoparound
+      DATABASE_HOST: shoparound-mysql
+      DATABASE_PORT: 3308
+      DATABASE_USER: root
+      DATABASE_PASSWORD: ${MYSQL_PASSWORD}
+      REDIS_HOST: shoparound-redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${MYSQL_PASSWORD}
+      TZ: Asia/Shanghai
+    restart: always
+    ports:
+      - "8000:8000"
+    networks:
+      network:
+        ipv4_address: 177.10.0.12
+
+  shoparound-django-production:
+    profiles:
+      - production
+    depends_on:
+      - shoparound-mysql
+    container_name: shoparound-django-production
+    working_dir: /backend
+    volumes:
+      - ./backend:/backend
+      - ./logs/log:/var/log
+    build:
+      context: .
+      dockerfile: ./docker_env/django/Dockerfile.production
+    environment:
+      DEBUG: false
+      PYTHONUNBUFFERED: 1
+      DATABASE_ENGINE: django.db.backends.mysql
+      DATABASE_NAME: shoparound
+      DATABASE_HOST: shoparound-mysql
+      DATABASE_PORT: 3308
+      DATABASE_USER: root
+      DATABASE_PASSWORD: ${MYSQL_PASSWORD}
+      REDIS_HOST: shoparound-redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${MYSQL_PASSWORD}
+      TZ: Asia/Shanghai
+    restart: always
+    ports:
+      - "8000:8000"
+    networks:
+      network:
+        ipv4_address: 177.10.0.12
+
+  shoparound-mysql:
+    container_name: shoparound-mysql
+    image: mysql:8.0
+    command:
+      --wait_timeout=31536000
+      --interactive_timeout=31536000
+      --max_connections=1000
+      --default-authentication-plugin=mysql_native_password
+    volumes:
+      - "./docker_env/mysql/data:/var/lib/mysql"
+      - "./docker_env/mysql/conf.d:/etc/mysql/conf.d"
+      - "./docker_env/mysql/logs:/logs"
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_DATABASE: "shoparound"
+      TZ: Asia/Shanghai
+    privileged: true
+    restart: always
+    ports:
+      - "3306:3306"
+    networks:
+      network:
+        ipv4_address: 177.10.0.13
+
+  shoparound-celery:
+    depends_on:
+      - shoparound-mysql
+    container_name: shoparound-celery
+    build:
+      context: .
+      dockerfile: ./docker_env/celery/Dockerfile
+    working_dir: /backend
+    volumes:
+      - ./backend:/backend
+      - ./logs/log:/var/log
+    environment:
+      PYTHONUNBUFFERED: 1
+      DATABASE_HOST: shoparound-mysql
+      DATABASE_PORT: 3308
+      DATABASE_USER: root
+      DATABASE_PASSWORD: ${MYSQL_PASSWORD}
+      REDIS_HOST: shoparound-redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${MYSQL_PASSWORD}
+      TZ: Asia/Shanghai
+    restart: always
+    networks:
+      network:
+        ipv4_address: 177.10.0.14
+
+
+  shoparound-redis:
+    container_name: shoparound-redis
+    image: redis:6.2.6-alpine
+    command: /bin/sh -c "echo 'vm.overcommit_memory = 1' >> /etc/sysctl.conf && redis-server /etc/redis/redis.conf --appendonly yes --requirepass ${REDIS_PASSWORD}"
+    volumes:
+      - ./docker_env/redis/data:/data
+      - ./docker_env/redis/redis.conf:/etc/redis/redis.conf
+    environment:
+      TZ: Asia/Shanghai
+    sysctls:
+      net.core.somaxconn: 1024
+    privileged: true
+    restart: always
+    ports:
+      - "6379:6379"
+    networks:
+      network:
+        ipv4_address: 177.10.0.15
+
+
+networks:
+  network:
+    ipam:
+      driver: default
+      config:
+        - subnet: '177.10.0.0/16'
+
